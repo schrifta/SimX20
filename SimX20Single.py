@@ -91,7 +91,7 @@ def ResizeAnnotations(labels, x0, y0):
 
 # Define the dataset directories
 inputDir = "D:/CytobitData/DataSets/My/Spr#12-3-my"
-outputDir = "D:/CytobitData/DataSets/My/Spr#12-3-my/X20"
+outputDir = "D:/CytobitData/DataSets/My/Spr#12-3-my/X20-single"
 
 try:
     os.mkdir(outputDir)
@@ -102,7 +102,7 @@ except OSError as error:
         print(outputDir + " creation problem!")
         exit(-1)
 
-showAnnotations = True
+showAnnotations = False
 
 # Loop through the subdirectories
 subdirs = ["train", "test", "valid"]
@@ -157,6 +157,7 @@ for subdir in subdirs:
     idx = 0
     newImage = []
     newLabels = []
+    imageNamesStr = []
     for filename in os.listdir(inputImageDir):
         # Get file extension
         if len(filename) > 4 and not os.path.isdir(filename) and filename[-4] == '.':
@@ -180,12 +181,13 @@ for subdir in subdirs:
                         labels.append(Label(cls, x, y, w, h))
 
                 # Paste the resized input image to the output image
-                x0 = 0 if idx in{0, 2} else int(width/2)
-                y0 = 0 if idx in{0, 1} else int(height/2)
+                x0 = int(width/4)
+                y0 = int(height/4)
                 resizedImage = cv2.resize(image,(int(width/2),int(height/2)))
-                if idx==0:
-                    newImage = np.zeros((height, width,3), np.uint8)
-                    newLabels = []
+                newImage = np.zeros((height, width,3), np.uint8)
+                newLabels = []
+                imageNamesStr = '[' + basename + ']'
+                    
                 newImage[y0:y0+int(height/2),x0:x0+int(width/2)] = resizedImage
 
                 # Resize and append the annotations
@@ -193,27 +195,28 @@ for subdir in subdirs:
                 for lbl in resizedLabels:
                     newLabels.append(lbl)
                                         
-                if idx==3:
-                    # Save the resized files
-                    if len(newLabels) > 0:
-                        cv2.imwrite(os.path.join(outputImageDir, basename + "_comb" + ext), newImage)
-                        with open(os.path.join(outputLabelDir, basename + "_comb.txt"), "w") as f:
-                            for lbl in newLabels:
-                                f.write('%s %8.6f %8.6f %8.6f %8.6f\n' % (lbl.cls, lbl.x, lbl.y, lbl.w, lbl.h))
-
-                    # Show the images with annotations
-                    if showAnnotations:
+                # Save the resized files
+                if len(newLabels) > 0:
+                    cv2.imwrite(os.path.join(outputImageDir, basename + "_comb" + ext), newImage)
+                    with open(os.path.join(outputLabelDir, basename + "_comb.txt"), "w") as f:
                         for lbl in newLabels:
-                            color = (0,200,0) if lbl.cls[0]=='0' else (0,200,200)
-                            cv2.rectangle(newImage,
-                                          (int(width * (lbl.x - lbl.w / 2)), int(height * (lbl.y - lbl.h / 2))),
-                                          (int(width * (lbl.x + lbl.w / 2)), int(height * (lbl.y + lbl.h / 2))),
-                                          color, 2)
-                        cv2.imshow("Conbined Indications", newImage)
-                        if 27 == int(cv2.waitKeyEx(0)):
-                            cv2.destroyAllWindows()
-                            exit(0)
+                            f.write('%s %8.6f %8.6f %8.6f %8.6f\n' % (lbl.cls, lbl.x, lbl.y, lbl.w, lbl.h))
+
+                # Show the images with annotations
+                if showAnnotations:
+                    for lbl in newLabels:
+                        #color = (0,200,0) if lbl.cls[0]=='0' else (0,200,200)  # YOLOv8Clip.exe colors
+                        color = (0,255,0) if lbl.cls=='1' else (0,80,255) # TestDataset.py colors
+                        cv2.rectangle(newImage,
+                                      (int(width * (lbl.x - lbl.w / 2)), int(height * (lbl.y - lbl.h / 2))),
+                                      (int(width * (lbl.x + lbl.w / 2)), int(height * (lbl.y + lbl.h / 2))),
+                                      color, 2)
+                    cv2.imshow(imageNamesStr, newImage)
+                    if 27 == int(cv2.waitKeyEx(0)):
+                        cv2.destroyAllWindows()
+                        exit(0)
 
 
                 # Set the index within an image quadruple
+                cv2.destroyAllWindows()
                 idx = (idx+1)%4
